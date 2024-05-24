@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import os
 from typing import List
 
-import numpy as np
 import pytest
 
 from haystack.components.evaluators import LLMEvaluator
@@ -22,6 +22,8 @@ class TestLLMEvaluator:
             ],
         )
         assert component.api == "openai"
+        assert component.api_base_url == "https://api.openai.com/v1"
+        assert component.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", List[str])]
@@ -42,6 +44,116 @@ class TestLLMEvaluator:
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
             )
+
+    def test_init_with_api_base_url__sets_component_baseurl_when_env_is_set(self, monkeypatch):
+        local_api_base = "http://localhost:11434"
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("OPENAI_API_BASE_URL", local_api_base)
+
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", List[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
+        assert component.api == "openai"
+        assert component.api_base_url == local_api_base
+        assert component.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+        assert component.generator.client.api_key == "test-api-key"
+        assert component.instructions == "test-instruction"
+        assert component.inputs == [("predicted_answers", List[str])]
+        assert component.outputs == ["score"]
+        assert component.examples == [
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+        ]
+        monkeypatch.delenv("OPENAI_API_BASE_URL")
+
+    def test_init_with_api_base_url__sets_component_baseurl_when_passed_as_parameter(self, monkeypatch):
+        local_api_base = "http://localhost:11434"
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        component = LLMEvaluator(
+            api_base_url=local_api_base,
+            instructions="test-instruction",
+            inputs=[("predicted_answers", List[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
+        assert component.api == "openai"
+        assert component.api_base_url == local_api_base
+        assert component.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+        assert component.generator.client.api_key == "test-api-key"
+        assert component.instructions == "test-instruction"
+        assert component.inputs == [("predicted_answers", List[str])]
+        assert component.outputs == ["score"]
+        assert component.examples == [
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+        ]
+
+    def test_init_with_generation_kwargs__generation_kwargs_are_set_by_default(self):
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            api_key=Secret.from_token("test-api-key"),
+            inputs=[("predicted_answers", List[str])],
+            outputs=["custom_score"],
+            api="openai",
+            examples=[
+                {
+                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
+                    "outputs": {"custom_score": 1},
+                },
+                {
+                    "inputs": {"predicted_answers": "Football is the most popular sport."},
+                    "outputs": {"custom_score": 0},
+                },
+            ],
+        )
+        assert component.generator.client.api_key == "test-api-key"
+        assert component.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+        assert component.api == "openai"
+        assert component.examples == [
+            {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
+        ]
+        assert component.instructions == "test-instruction"
+        assert component.inputs == [("predicted_answers", List[str])]
+        assert component.outputs == ["custom_score"]
+
+    def test_init_with_generation_kwargs__generation_kwargs_are_correctly_when_passed_as_parameter(self):
+        custom_generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 420, "temperature": 0.1}
+
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            api_key=Secret.from_token("test-api-key"),
+            inputs=[("predicted_answers", List[str])],
+            outputs=["custom_score"],
+            api="openai",
+            generation_kwargs=custom_generation_kwargs,
+            examples=[
+                {
+                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
+                    "outputs": {"custom_score": 1},
+                },
+                {
+                    "inputs": {"predicted_answers": "Football is the most popular sport."},
+                    "outputs": {"custom_score": 0},
+                },
+            ],
+        )
+        assert component.generator.client.api_key == "test-api-key"
+        assert component.generation_kwargs == custom_generation_kwargs
+        assert component.api == "openai"
+        assert component.examples == [
+            {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
+        ]
+        assert component.instructions == "test-instruction"
+        assert component.inputs == [("predicted_answers", List[str])]
+        assert component.outputs == ["custom_score"]
 
     def test_init_with_parameters(self):
         component = LLMEvaluator(

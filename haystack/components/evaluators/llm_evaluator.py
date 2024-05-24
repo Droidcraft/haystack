@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import os
 from typing import Any, Dict, List, Optional, Tuple, Type
 from warnings import warn
 
@@ -58,6 +59,8 @@ class LLMEvaluator:
         raise_on_failure: bool = True,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        api_base_url: Optional[str] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = {"response_format": {"type": "json_object"}, "seed": 42},
     ):
         """
         Creates an instance of LLMEvaluator.
@@ -94,11 +97,15 @@ class LLMEvaluator:
         self.examples = examples
         self.api = api
         self.api_key = api_key
+        self.api_base_url = (
+            api_base_url if api_base_url else os.getenv("OPENAI_API_BASE_URL", "https://api.openai.com/v1")
+        )  # workaround unclear init order if set as parameter instead
+        self.generation_kwargs = generation_kwargs
         self.progress_bar = progress_bar
 
         if api == "openai":
             self.generator = OpenAIGenerator(
-                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42}
+                api_key=api_key, api_base_url=api_base_url, generation_kwargs=generation_kwargs
             )
         else:
             raise ValueError(f"Unsupported API: {api}")
