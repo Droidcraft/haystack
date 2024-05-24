@@ -23,6 +23,7 @@ class TestLLMEvaluator:
         )
         assert component.api == "openai"
         assert component.api_base_url == "https://api.openai.com/v1"
+        assert component.model == "gpt-3.5-turbo"
         assert component.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == "test-instruction"
@@ -60,7 +61,6 @@ class TestLLMEvaluator:
         )
         assert component.api == "openai"
         assert component.api_base_url == local_api_base
-        assert component.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", List[str])]
@@ -85,7 +85,6 @@ class TestLLMEvaluator:
         )
         assert component.api == "openai"
         assert component.api_base_url == local_api_base
-        assert component.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", List[str])]
@@ -123,7 +122,7 @@ class TestLLMEvaluator:
         assert component.inputs == [("predicted_answers", List[str])]
         assert component.outputs == ["custom_score"]
 
-    def test_init_with_generation_kwargs__generation_kwargs_are_correctly_when_passed_as_parameter(self):
+    def test_init_with_generation_kwargs__sets_generation_kwargs_when_passed_as_parameter(self):
         custom_generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 420, "temperature": 0.1}
 
         component = LLMEvaluator(
@@ -146,6 +145,37 @@ class TestLLMEvaluator:
         )
         assert component.generator.client.api_key == "test-api-key"
         assert component.generation_kwargs == custom_generation_kwargs
+        assert component.api == "openai"
+        assert component.examples == [
+            {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
+        ]
+        assert component.instructions == "test-instruction"
+        assert component.inputs == [("predicted_answers", List[str])]
+        assert component.outputs == ["custom_score"]
+
+    def test_init_with_model__sets_model_when_passed_as_parameter(self):
+        custom_model = "example-model"
+        component = LLMEvaluator(
+            model=custom_model,
+            instructions="test-instruction",
+            api_key=Secret.from_token("test-api-key"),
+            inputs=[("predicted_answers", List[str])],
+            outputs=["custom_score"],
+            api="openai",
+            examples=[
+                {
+                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
+                    "outputs": {"custom_score": 1},
+                },
+                {
+                    "inputs": {"predicted_answers": "Football is the most popular sport."},
+                    "outputs": {"custom_score": 0},
+                },
+            ],
+        )
+        assert component.generator.client.api_key == "test-api-key"
+        assert component.model == custom_model
         assert component.api == "openai"
         assert component.examples == [
             {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},

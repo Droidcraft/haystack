@@ -60,6 +60,7 @@ class LLMEvaluator:
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         api_base_url: Optional[str] = None,
+        model: Optional[str] = "gpt-3.5-turbo",
         generation_kwargs: Optional[Dict[str, Any]] = {"response_format": {"type": "json_object"}, "seed": 42},
     ):
         """
@@ -101,11 +102,12 @@ class LLMEvaluator:
             api_base_url if api_base_url else os.getenv("OPENAI_API_BASE_URL", "https://api.openai.com/v1")
         )  # workaround unclear init order if set as parameter instead
         self.generation_kwargs = generation_kwargs
+        self.model = model
         self.progress_bar = progress_bar
 
         if api == "openai":
             self.generator = OpenAIGenerator(
-                api_key=api_key, api_base_url=api_base_url, generation_kwargs=generation_kwargs
+                api_key=api_key, api_base_url=api_base_url, model=model, generation_kwargs=generation_kwargs
             )
         else:
             raise ValueError(f"Unsupported API: {api}")
